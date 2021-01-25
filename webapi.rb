@@ -1,9 +1,6 @@
 # webapi.rb
 require 'sinatra'
 require 'json'
-
-# We require gyoku here in order to use it in the
-# XML route.
 require 'gyoku'
 
 users = {
@@ -12,26 +9,43 @@ users = {
   john:     { first_name: 'John', last_name: 'Smith', age: 28 }
 }
 
-before do
-  content_type 'application/json'
+# helpers is a method provided by Sinatra to register helper methods
+# to be used inside route methods.
+helpers do
+
+  def json_or_default?(type)
+    ['application/json', 'application/*', '*/*'].include?(type.to_s)
+  end
+
+  def xml?(type)
+    type.to_s == 'application/xml'
+  end
+
+  def accepted_media_type
+    return 'json' unless request.accept.any?
+
+    request.accept.each do |mt|
+      return 'json' if json_or_default?(mt)
+      return 'xml' if xml?(mt)
+    end
+
+    halt 406, 'Not Acceptable'
+  end
+
 end
 
 get '/' do
   'Master Ruby Web APIs - Chapter 2'
 end
 
-# Looping through the list of routes for which
-# we want to return a JSON representation.
-['/users', '/users.json'].each do |path|
-  get path do
-    users.map { |name, data| data.merge(id: name) }.to_json
-  end
-end
+get '/users' do
+  type = accepted_media_type
 
-# Defining /users.xml with the application/xml media type
-# and simply calling Gyoku on our users hash with a root
-# element 'users'.
-get '/users.xml' do
-  content_type 'application/xml'
-  Gyoku.xml(users: users)
+  if type == 'json'
+    content_type 'application/json'
+    users.map { |name, data| data.merge(id: name) }.to_json
+  elsif type == 'xml'
+    content_type 'application/xml'
+    Gyoku.xml(users: users)
+  end
 end
