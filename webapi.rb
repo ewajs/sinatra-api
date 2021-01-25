@@ -38,6 +38,16 @@ get '/' do
   'Master Ruby Web APIs - Chapter 2'
 end
 
+head '/users' do
+    type = accepted_media_type
+  
+    if type == 'json'
+      content_type 'application/json'
+    elsif type == 'xml'
+      content_type 'application/xml'
+    end
+  end
+
 get '/users' do
   type = accepted_media_type
 
@@ -60,4 +70,14 @@ get '/users/:first_name' do |first_name|
       content_type 'application/xml'
       Gyoku.xml(first_name => users[first_name.to_sym])
     end
-  end
+end
+
+post '/users' do
+  user = JSON.parse(request.body.read)
+  users[user['first_name'].downcase.to_sym] = user
+
+  url = "http://localhost:4567/users/#{user['first_name']}"
+  response.headers['Location'] = url   
+
+  status 201
+end
